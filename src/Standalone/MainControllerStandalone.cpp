@@ -553,7 +553,7 @@ QSharedPointer<audio::Plugin> MainControllerStandalone::createPluginInstance(
 
     else if (descriptor.isAU())
     {
-        return au::audioUnitPluginfromPath(descriptor.getPath());
+        return QSharedPointer<audio::Plugin>(au::audioUnitPluginfromPath(descriptor.getPath()));
     }
 
 #endif

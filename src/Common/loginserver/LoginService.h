@@ -179,7 +179,7 @@ private:
     static const int REFRESH_PERIOD = 60000;
     QTimer *refreshTimer;
 
-    void handleJson(const QString &json);
+    void handleJson(const QString &json, const QUrl &requestUrl);
     void handleServersJson(const QJsonObject &root);
     void handleVersionJson(const QJsonObject &root);
 

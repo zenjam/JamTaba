@@ -49,26 +49,22 @@ QString PortAudioDriver::getInputChannelName(const unsigned int index) const
     return channelName;
 }
 
-void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters &inputParameters)
+void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters &inputParameters) const
 {
-    Q_UNUSED(inputParameters)
-    // qCDebug(portaudio) << "using MAC scpecific stream infos for inputs";
-    // PaMacCoreStreamInfo streamInfo;
-    // PaMacCore_SetupStreamInfo(&streamInfo, paMacCorePro);
-    // inputParams.hostApiSpecificStreamInfo  = &streamInfo;
+    static PaMacCoreStreamInfo streamInfo;
+    PaMacCore_SetupStreamInfo(&streamInfo, paMacCorePro);
+    inputParameters.hostApiSpecificStreamInfo = &streamInfo;
 }
 
-void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters &outputParameters)
+void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters &outputParameters) const
 {
-    Q_UNUSED(outputParameters)
-    // qCDebug(portaudio) << "using MAC scpecific stream infos for output";
-    // PaMacCoreStreamInfo outStreamInfo;
-    // PaMacCore_SetupStreamInfo(&outStreamInfo, paMacCorePro);
-    // outputParams.hostApiSpecificStreamInfo = &outStreamInfo;
+    static PaMacCoreStreamInfo streamInfo;
+    PaMacCore_SetupStreamInfo(&streamInfo, paMacCorePro);
+    outputParameters.hostApiSpecificStreamInfo = &streamInfo;
 }
 
 void PortAudioDriver::releaseHostSpecificParameters(const PaStreamParameters &inputParameters,
-                                                    const PaStreamParameters &outputParameters)
+                                                    const PaStreamParameters &outputParameters) const
 {
     Q_UNUSED(inputParameters)
     Q_UNUSED(outputParameters)

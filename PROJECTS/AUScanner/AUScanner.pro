@@ -21,6 +21,12 @@ LIBS += -mmacosx-version-min=10.7 -stdlib=libc++
 ROOT_PATH = "../.."
 SOURCE_PATH = $$ROOT_PATH/src
 
+CONDA_QT_HEADERS = $$[QT_INSTALL_PREFIX]/include/NOTQT/qt
+exists($$CONDA_QT_HEADERS) {
+    INCLUDEPATH += $$CONDA_QT_HEADERS
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtCore
+}
+
 INCLUDEPATH += $$SOURCE_PATH/Common
 INCLUDEPATH += $$SOURCE_PATH/Scanners
 
@@ -43,4 +49,3 @@ LIBS+= -dead_strip
 #mac osx doc icon
 ICON = Jamtaba.icns
 CONFIG += console
-

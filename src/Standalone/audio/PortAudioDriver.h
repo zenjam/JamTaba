@@ -59,15 +59,16 @@ protected:
 private:
     bool initPortAudio(int sampleRate, int bufferSize);
     PaStream *paStream;
+    bool useNonInterleavedPortAudio;
     void translatePortAudioCallBack(const void *in, void *out, unsigned long framesPerBuffer);
 
     void changeInputSelection(int firstInputChannelIndex, int inputChannelCount);
 
-    void configureHostSpecificInputParameters(PaStreamParameters &inputParameters);
-    void configureHostSpecificOutputParameters(PaStreamParameters &outputParameters);
+    void configureHostSpecificInputParameters(PaStreamParameters &inputParameters) const;
+    void configureHostSpecificOutputParameters(PaStreamParameters &outputParameters) const;
 
     void releaseHostSpecificParameters(const PaStreamParameters &inputParameters,
-                                       const PaStreamParameters &outputParameters);
+                                       const PaStreamParameters &outputParameters) const;
 
     void ensureInputRangeIsValid();
     void ensureOutputRangeIsValid();

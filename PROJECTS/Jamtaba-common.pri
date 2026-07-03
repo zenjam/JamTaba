@@ -1,12 +1,67 @@
-QT += core gui network websockets widgets concurrent multimedia multimediawidgets
-QT += webenginewidgets
-
-mac:LIBS += -dead_strip
-
 ROOT_PATH = "$$PWD/.."
 SOURCE_PATH = "$$ROOT_PATH/src"
 VST_SDK_PATH = "$$ROOT_PATH/VST_SDK"
 JAMTABA_BUILDER = $$(JAMTABA_BUILDER)
+
+QT += core gui network widgets concurrent
+
+LOCAL_QT_SRC = $$ROOT_PATH/../qt-everywhere-src-5.15.14
+LOCAL_QT_VERSION = 5.15.14
+
+qtHaveModule(websockets) {
+    QT += websockets
+} else:exists($$LOCAL_QT_SRC/qtwebsockets/lib/QtWebSockets.framework/Headers/QWebSocket) {
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtwebsockets/include
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtwebsockets/include/QtWebSockets
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtwebsockets/include/QtWebSockets/$$LOCAL_QT_VERSION
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtwebsockets/include/QtWebSockets/$$LOCAL_QT_VERSION/QtWebSockets
+    QMAKE_FRAMEWORKPATH += $$LOCAL_QT_SRC/qtwebsockets/lib
+    LIBS += -F$$LOCAL_QT_SRC/qtwebsockets/lib -framework QtWebSockets
+    QMAKE_RPATHDIR += $$LOCAL_QT_SRC/qtwebsockets/lib
+} else {
+    error("Qt WebSockets not found")
+}
+
+qtHaveModule(multimedia) {
+    QT += multimedia
+} else:exists($$LOCAL_QT_SRC/qtmultimedia/lib/QtMultimedia.framework/Headers/QCamera) {
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtmultimedia/include
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtmultimedia/include/QtMultimedia
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtmultimedia/include/QtMultimedia/$$LOCAL_QT_VERSION
+    INCLUDEPATH += $$LOCAL_QT_SRC/qtmultimedia/include/QtMultimedia/$$LOCAL_QT_VERSION/QtMultimedia
+    QMAKE_FRAMEWORKPATH += $$LOCAL_QT_SRC/qtmultimedia/lib
+    LIBS += -F$$LOCAL_QT_SRC/qtmultimedia/lib -framework QtMultimedia
+    QMAKE_RPATHDIR += $$LOCAL_QT_SRC/qtmultimedia/lib
+} else {
+    error("Qt Multimedia not found")
+}
+
+qtHaveModule(webenginewidgets) {
+    QT += webenginewidgets
+    DEFINES += JAMTABA_WEBENGINE
+} else {
+    message("Qt WebEngine not found; building without NinjamPlugin UI")
+}
+
+mac:LIBS += -dead_strip
+
+# Some Conda-packaged Qt 5 builds relocate headers under include/NOTQT/qt.
+# qmake still reports include/qt, so add the real header roots when present.
+CONDA_QT_HEADERS = $$[QT_INSTALL_PREFIX]/include/NOTQT/qt
+exists($$CONDA_QT_HEADERS) {
+    INCLUDEPATH += $$CONDA_QT_HEADERS
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtCore
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtGui
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtNetwork
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtWebSockets
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtWidgets
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtConcurrent
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtMultimedia
+    INCLUDEPATH += $$CONDA_QT_HEADERS/QtMultimediaWidgets
+    exists($$CONDA_QT_HEADERS/QtWebEngineWidgets) {
+        INCLUDEPATH += $$CONDA_QT_HEADERS/QtWebEngineWidgets
+    }
+}
 
 INCLUDEPATH += $$SOURCE_PATH/Common
 
@@ -332,8 +387,10 @@ RESOURCES += ../resources/jamtaba.qrc
 
 #this is the file used by the Beautifier QtCreator plugin (using the Uncrustify tool)
 DISTFILES += $$PWD/uncrustify.cfg
-HEADERS += NinjamPlugin/NinjamPlugin.h
-HEADERS += NinjamPlugin/NinjamPluginPage.h
-HEADERS += NinjamPlugin/NinjamPluginWebBridge.h
-SOURCES += NinjamPlugin/NinjamPluginPage.cpp
-SOURCES += NinjamPlugin/NinjamPlugin.cpp
+contains(DEFINES, JAMTABA_WEBENGINE) {
+    HEADERS += NinjamPlugin/NinjamPlugin.h
+    HEADERS += NinjamPlugin/NinjamPluginPage.h
+    HEADERS += NinjamPlugin/NinjamPluginWebBridge.h
+    SOURCES += NinjamPlugin/NinjamPluginPage.cpp
+    SOURCES += NinjamPlugin/NinjamPlugin.cpp
+}

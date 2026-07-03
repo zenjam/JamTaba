@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-#include "miniupnpc/miniupnpc.h"
+#include "miniupnpc.h"
 
 class UPnPManager : public QObject
 {

@@ -23,7 +23,9 @@
 #include "MetronomeUtils.h"
 #include "persistence/Settings.h"
 #include "Utils.h"
+#ifdef JAMTABA_WEBENGINE
 #include "NinjamPlugin/NinjamPlugin.h"
+#endif
 
 #include "gui/chat/NinjamChatMessageParser.h"
 
@@ -345,15 +347,15 @@ void NinjamController::process(const audio::SamplesBuffer &in, audio::SamplesBuf
             emit intervalBeatChanged(currentBeat);
 
 	
-	    NinjamPluginMetroEvent *ev = new NinjamPluginMetroEvent();
-	    ev->bpm = currentBpm;
-	    ev->bpi = currentBpi;
-	   // ev->time = (float)intervalPosition / (float)samplesInInterval;
-	    ev->time = (float)currentBeat;
-	//intervalPosition / (float)samplesInInterval;
-	    NinjamPlugin& plugin = NinjamPlugin::getInstance();
+#ifdef JAMTABA_WEBENGINE
+            NinjamPluginMetroEvent *ev = new NinjamPluginMetroEvent();
+            ev->bpm = currentBpm;
+            ev->bpi = currentBpi;
+            ev->time = (float)currentBeat;
+            NinjamPlugin& plugin = NinjamPlugin::getInstance();
             plugin.sendMetronomeEvent(ev);
-	    delete ev;
+            delete ev;
+#endif
         }
 
 		

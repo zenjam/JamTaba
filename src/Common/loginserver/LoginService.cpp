@@ -94,7 +94,17 @@ LoginService::LoginService(QObject *parent) :
     });
 
     connect(&httpClient, &QNetworkAccessManager::finished, this, [=](QNetworkReply *reply){
-        handleJson(reply->readAll());
+        const auto requestUrl = reply->request().url();
+        if (reply->error() != QNetworkReply::NoError) {
+            qWarning() << "LoginService request failed:" << requestUrl << reply->errorString();
+            if (requestUrl == QUrl(LOGIN_SERVER_URL))
+                emit roomsListAvailable(QList<RoomInfo>());
+            reply->deleteLater();
+            return;
+        }
+
+        handleJson(reply->readAll(), requestUrl);
+        reply->deleteLater();
     });
 
     refreshTimer->start(REFRESH_PERIOD);
@@ -132,10 +142,15 @@ void LoginService::handleVersionJson(const QJsonObject &root)
 
 }
 
-void LoginService::handleJson(const QString &json)
+void LoginService::handleJson(const QString &json, const QUrl &requestUrl)
 {
-    if (json.isEmpty())
+    const bool isServersRequest = requestUrl == QUrl(LOGIN_SERVER_URL);
+
+    if (json.isEmpty()) {
+        if (isServersRequest)
+            emit roomsListAvailable(QList<RoomInfo>());
         return;
+    }
 
     auto document = QJsonDocument::fromJson(QByteArray(json.toStdString().c_str()));
     auto root = document.object();
@@ -144,6 +159,8 @@ void LoginService::handleJson(const QString &json)
         handleServersJson(root);
     else if (root.contains("version"))
         handleVersionJson(root);
+    else if (isServersRequest)
+        emit roomsListAvailable(QList<RoomInfo>());
 }
 
 int getServerPort(const QString &serverName) {

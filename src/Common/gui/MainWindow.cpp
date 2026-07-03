@@ -118,7 +118,9 @@ MainWindow::MainWindow(MainController *mainController, QWidget *parent) :
     initializeCameraWidget();
     setupWidgets();
     setupSignals();
+#ifdef JAMTABA_WEBENGINE
     initializeNinjamPlugin();
+#endif
 
     setNetworkUsageUpdatePeriod(MainWindow::DEFAULT_NETWORK_USAGE_UPDATE_PERIOD);
 
@@ -1237,10 +1239,10 @@ void MainWindow::refreshPublicRoomsList(const QList<login::RoomInfo> &publicRoom
 
     QFileInfo privateServersFileInfo(privateServersFilePath);
 
+    hideBusyDialog();
+
     if (publicRooms.isEmpty() && !privateServersFileInfo.exists())
         return;
-
-    hideBusyDialog();
 
     QList<login::RoomInfo> sortedRooms(publicRooms);
     std::sort(sortedRooms.begin(), sortedRooms.end(), jamRoomLessThan);
@@ -3012,6 +3014,7 @@ class VDONinjaPlugin:NinjamPlugin {
 };
 */
 
+#ifdef JAMTABA_WEBENGINE
 #include <QtWebEngineWidgets/QWebEngineView>
 
 #include <QUrl>
@@ -3133,6 +3136,13 @@ QObject::connect(act,SIGNAL(triggered()),
 int ninjam_plugin_init() {
     
 }
+#else
+void MainWindow::openNinjamPlugin(const QString &)
+{
+}
 
-
+void MainWindow::initializeNinjamPlugin()
+{
+}
+#endif
 

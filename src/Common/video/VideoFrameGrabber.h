@@ -1,8 +1,8 @@
 #ifndef _VIDEO_FRAME_GRABBER_
 #define _VIDEO_FRAME_GRABBER_
 
-#include <QVideoWidget>
 #include <QAbstractVideoSurface>
+#include <QVideoFrame>
 #include <QWidget>
 #include <QThread>
 

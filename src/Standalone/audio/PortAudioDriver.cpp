@@ -22,7 +22,8 @@ namespace audio
 
 PortAudioDriver::PortAudioDriver(controller::MainController* mainController, QString audioInputDevice, QString audioOutputDevice, int firstInputIndex, int lastInputIndex, int firstOutputIndex, int lastOutputIndex, int sampleRate, int bufferSize ) :
     AudioDriver(mainController),
-    useSystemDefaultDevices(false)
+    useSystemDefaultDevices(false),
+    useNonInterleavedPortAudio(true)
 {
     qCDebug(jtAudio) << QString("initializing portaudio (%1)...").arg(Pa_GetVersionText());
     auto error = Pa_Initialize();
@@ -142,8 +143,13 @@ bool PortAudioDriver::initPortAudio(int sampleRate, int bufferSize)
 
     if (device != paNoDevice) { // avoid query sample rates in a invalid device
         QList<int> validSampleRates = getValidSampleRates(device);
-        if (!validSampleRates.isEmpty() && this->sampleRate > validSampleRates.last()) {
-            this->sampleRate = validSampleRates.last(); // use the max supported sample rate
+        if (!validSampleRates.isEmpty()) {
+            if (this->sampleRate > validSampleRates.last()) {
+                this->sampleRate = validSampleRates.last(); // use the max supported sample rate
+            }
+            if (!validSampleRates.contains(this->sampleRate)) {
+                this->sampleRate = validSampleRates.first();
+            }
         }
     }
 
@@ -156,6 +162,9 @@ bool PortAudioDriver::initPortAudio(int sampleRate, int bufferSize)
             }
             if (this->bufferSize > validBufferSizes.last()) {
                 this->bufferSize = validBufferSizes.last(); // use the max supported buffer size
+            }
+            if (!validBufferSizes.contains(this->bufferSize)) {
+                this->bufferSize = validBufferSizes.first();
             }
         }
     }
@@ -205,10 +214,20 @@ void PortAudioDriver::translatePortAudioCallBack(const void *in, void *out, unsi
     inputBuffer.setFrameLenght(framesPerBuffer);
     outputBuffer.setFrameLenght(framesPerBuffer);
     if (!globalInputRange.isEmpty()) {
-        float **inputs = (float**)in;
         int inputChannels = globalInputRange.getChannels();
-        for (int c = 0; c < inputChannels; c++) {
-            std::memcpy(inputBuffer.getSamplesArray(c), inputs[c], bytesToProcess);
+        if (useNonInterleavedPortAudio) {
+            float **inputs = (float**)in;
+            for (int c = 0; c < inputChannels; c++) {
+                std::memcpy(inputBuffer.getSamplesArray(c), inputs[c], bytesToProcess);
+            }
+        }
+        else {
+            const float *inputs = static_cast<const float *>(in);
+            for (int c = 0; c < inputChannels; ++c) {
+                float *channelData = inputBuffer.getSamplesArray(c);
+                for (unsigned long s = 0; s < framesPerBuffer; ++s)
+                    channelData[s] = inputs[s * inputChannels + c];
+            }
         }
     }
     else {
@@ -224,10 +243,19 @@ void PortAudioDriver::translatePortAudioCallBack(const void *in, void *out, unsi
     }
 
     // convert application output buffers to portaudio format
-    float **outputs = static_cast<float**>(out);
     int outputChannels = globalOutputRange.getChannels();
-    for (int c = 0; c < outputChannels; c++){
-        std::memcpy(outputs[c], outputBuffer.getSamplesArray(c), bytesToProcess);
+    if (useNonInterleavedPortAudio) {
+        float **outputs = static_cast<float**>(out);
+        for (int c = 0; c < outputChannels; c++){
+            std::memcpy(outputs[c], outputBuffer.getSamplesArray(c), bytesToProcess);
+        }
+    }
+    else {
+        float *outputs = static_cast<float *>(out);
+        for (unsigned long s = 0; s < framesPerBuffer; ++s) {
+            for (int c = 0; c < outputChannels; ++c)
+                outputs[s * outputChannels + c] = outputBuffer.getSamplesArray(c)[s];
+        }
     }
 }
 
@@ -275,12 +303,14 @@ bool PortAudioDriver::start()
     unsigned long framesPerBuffer = bufferSize; // paFramesPerBufferUnspecified;
     qCDebug(jtAudio) << "Starting portaudio using" << framesPerBuffer << " as buffer size.";
     PaSampleFormat sampleFormat = paFloat32 | paNonInterleaved;
+    useNonInterleavedPortAudio = true;
 
     PaStreamParameters inputParams;
     inputParams.channelCount = globalInputRange.getChannels();
     inputParams.device = useSystemDefaultDevices ? Pa_GetDefaultInputDevice() : audioInputDeviceIndex;
     inputParams.sampleFormat = sampleFormat;
-    inputParams.suggestedLatency = 0;//computeSuggestedLatency(sampleRate, bufferSize);// Pa_GetDeviceInfo(inputDeviceIndex)->defaultLowOutputLatency;
+    const PaDeviceInfo *inputDeviceInfo = Pa_GetDeviceInfo(inputParams.device);
+    inputParams.suggestedLatency = inputDeviceInfo ? inputDeviceInfo->defaultLowInputLatency : 0;
     inputParams.hostApiSpecificStreamInfo = NULL;
 
     configureHostSpecificInputParameters(inputParams); // this can be different in different operational systems
@@ -290,7 +320,8 @@ bool PortAudioDriver::start()
     outputParams.channelCount = globalOutputRange.getChannels();// */outputChannels;
     outputParams.device = useSystemDefaultDevices ? Pa_GetDefaultOutputDevice() : audioOutputDeviceIndex;
     outputParams.sampleFormat = sampleFormat;
-    outputParams.suggestedLatency = 0; //computeSuggestedLatency(sampleRate, bufferSize);//  Pa_GetDeviceInfo(outputDeviceIndex)->defaultLowOutputLatency;
+    const PaDeviceInfo *outputDeviceInfo = Pa_GetDeviceInfo(outputParams.device);
+    outputParams.suggestedLatency = outputDeviceInfo ? outputDeviceInfo->defaultLowOutputLatency : 0;
     outputParams.hostApiSpecificStreamInfo = NULL;
 
     configureHostSpecificOutputParameters(outputParams);
@@ -313,44 +344,108 @@ bool PortAudioDriver::start()
         return false;
     }
 
-    // test if output format is supported
+    auto retryWithDefaultSampleRate = [&](PaError error, const PaDeviceInfo *deviceInfo, const PaStreamParameters *input, const PaStreamParameters *output) -> PaError {
+        if (error == paNoError || !deviceInfo || deviceInfo->defaultSampleRate <= 0)
+            return error;
+
+        int fallbackSampleRate = qRound(deviceInfo->defaultSampleRate);
+        if (fallbackSampleRate == sampleRate)
+            return error;
+
+        PaError fallbackError = Pa_IsFormatSupported(input, output, fallbackSampleRate);
+        if (fallbackError == paNoError) {
+            qWarning() << "Retrying PortAudio with device default sample rate" << fallbackSampleRate
+                       << "instead of" << sampleRate;
+            this->sampleRate = fallbackSampleRate;
+            return paNoError;
+        }
+
+        return error;
+    };
+
+    auto retryWithInterleavedFormat = [&](PaError error) -> PaError {
+        if (error == paNoError || sampleFormat == paFloat32)
+            return error;
+
+        sampleFormat = paFloat32;
+        useNonInterleavedPortAudio = false;
+        inputParams.sampleFormat = sampleFormat;
+        outputParams.sampleFormat = sampleFormat;
+
+        PaError formatError = Pa_IsFormatSupported(nullptr, &outputParams, this->sampleRate);
+        formatError = retryWithDefaultSampleRate(formatError, outputDeviceInfo, nullptr, &outputParams);
+        if (formatError == paNoError)
+            return paNoError;
+
+        useNonInterleavedPortAudio = true;
+        sampleFormat = paFloat32 | paNonInterleaved;
+        inputParams.sampleFormat = sampleFormat;
+        outputParams.sampleFormat = sampleFormat;
+        return error;
+    };
+
+    // Older PortAudio/CoreAudio combinations may reject the format probe but still
+    // open successfully, so treat this as diagnostics and let Pa_OpenStream decide.
     PaError error =  Pa_IsFormatSupported(nullptr, &outputParams, sampleRate);
+    error = retryWithDefaultSampleRate(error, outputDeviceInfo, nullptr, &outputParams);
+    error = retryWithInterleavedFormat(error);
     if (error != paNoError) {
-        qCritical() << "unsuported output format: " <<
-                       Pa_GetErrorText(error) <<
-                       "sampleRate: " << sampleRate <<
-                       "channels: " << outputParams.channelCount << Qt::endl;
-        this->audioOutputDeviceIndex = paNoDevice;
-        releaseHostSpecificParameters(inputParams, outputParams);
-        return false;
+        qWarning() << "Output format probe failed, trying stream open anyway:" <<
+                      Pa_GetErrorText(error) <<
+                      "sampleRate:" << this->sampleRate <<
+                      "channels:" << outputParams.channelCount;
     }
 
 
     // test if input format is supported
     if (!globalInputRange.isEmpty()) {
-        error =  Pa_IsFormatSupported(&inputParams, nullptr, sampleRate);
+        error =  Pa_IsFormatSupported(&inputParams, nullptr, this->sampleRate);
+        error = retryWithDefaultSampleRate(error, inputDeviceInfo, &inputParams, nullptr);
+        if (error != paNoError && !useNonInterleavedPortAudio) {
+            error = Pa_IsFormatSupported(&inputParams, nullptr, this->sampleRate);
+        }
         if (error != paNoError) {
-            qCritical() << "unsuported input format: " <<
-                           Pa_GetErrorText(error) <<
-                           "sampleRate: " << sampleRate <<
-                           "channels: " << inputParams.channelCount << Qt::endl;
-            this->audioInputDeviceIndex = paNoDevice;
-            releaseHostSpecificParameters(inputParams, outputParams);
-            return false;
+            qWarning() << "Input format probe failed, trying stream open anyway:" <<
+                          Pa_GetErrorText(error) <<
+                          "sampleRate:" << this->sampleRate <<
+                          "channels:" << inputParams.channelCount;
         }
     }
 
-    paStream = NULL;
-    error = Pa_OpenStream(&paStream,
-                          (!globalInputRange.isEmpty()) ? (&inputParams) : NULL,
-                          &outputParams,
-                          sampleRate,
-                          framesPerBuffer,
-                          paNoFlag,
-                          portaudioCallBack,
-                          (void*)this); // I'm passing 'this' to portaudio, so I can run methods inside the callback function
+    auto tryOpenStream = [&](int streamSampleRate, PaSampleFormat streamFormat, bool nonInterleaved) -> PaError {
+        useNonInterleavedPortAudio = nonInterleaved;
+        inputParams.sampleFormat = streamFormat;
+        outputParams.sampleFormat = streamFormat;
+        paStream = NULL;
+        return Pa_OpenStream(&paStream,
+                             (!globalInputRange.isEmpty()) ? (&inputParams) : NULL,
+                             &outputParams,
+                             streamSampleRate,
+                             framesPerBuffer,
+                             paNoFlag,
+                             portaudioCallBack,
+                             (void*)this);
+    };
+
+    error = tryOpenStream(this->sampleRate, sampleFormat, useNonInterleavedPortAudio);
+    if (error != paNoError && useNonInterleavedPortAudio) {
+        qWarning() << "Retrying PortAudio stream open with interleaved float32";
+        error = tryOpenStream(this->sampleRate, paFloat32, false);
+    }
+
+    int outputDefaultSampleRate = outputDeviceInfo ? qRound(outputDeviceInfo->defaultSampleRate) : 0;
+    if (error != paNoError && outputDefaultSampleRate > 0 && outputDefaultSampleRate != this->sampleRate) {
+        qWarning() << "Retrying PortAudio stream open with output default sample rate"
+                   << outputDefaultSampleRate;
+        this->sampleRate = outputDefaultSampleRate;
+        error = tryOpenStream(this->sampleRate, paFloat32, false);
+    }
 
     if (error != paNoError) {
+        qCritical() << "Error opening portaudio stream:"
+                    << Pa_GetErrorText(error)
+                    << "sampleRate:" << this->sampleRate
+                    << "channels:" << outputParams.channelCount;
         releaseHostSpecificParameters(inputParams, outputParams);
         return false;
     }
@@ -372,28 +467,32 @@ bool PortAudioDriver::start()
 
 QList<int> PortAudioDriver::getValidSampleRates(int deviceIndex) const
 {
-    PaStreamParameters outputParams;
-    outputParams.channelCount = 1;
-    outputParams.device = deviceIndex;
-    outputParams.sampleFormat = paFloat32 | paNonInterleaved;
+    QList<int> validSRs;
     const PaDeviceInfo *dev = Pa_GetDeviceInfo(deviceIndex);
+    if (!dev || dev->maxOutputChannels <= 0)
+        return validSRs;
+
+    PaStreamParameters outputParams;
+    outputParams.channelCount = std::min<int>(2, dev->maxOutputChannels);
+    outputParams.device = deviceIndex;
+    outputParams.sampleFormat = paFloat32;
     outputParams.suggestedLatency = dev ? dev->defaultLowOutputLatency : 0;
     outputParams.hostApiSpecificStreamInfo = NULL;
-    QList<int> validSRs;
-    validSRs.append(44100);
-    validSRs.append(48000);
-    validSRs.append(96000);
-    validSRs.append(192000);
-    for (int t = validSRs.size()-1; t >= 0; --t) {
-        int sampleRate = validSRs.at(t);
-        PaError error =  Pa_IsFormatSupported(  NULL, &outputParams, sampleRate);
-        if (error != paNoError) {
-            validSRs.removeAt(t);
-        }
-        else {
-            break; // test bigger sample rates first, and when the first big sample rate pass the test assume all other small sample rates are ok
-        }
+    configureHostSpecificOutputParameters(outputParams);
+
+    QList<int> candidateSampleRates{44100, 48000, 96000, 192000};
+    int defaultSampleRate = qRound(dev->defaultSampleRate);
+    if (defaultSampleRate > 0 && !candidateSampleRates.contains(defaultSampleRate))
+        candidateSampleRates.prepend(defaultSampleRate);
+
+    for (int sampleRate : qAsConst(candidateSampleRates)) {
+        PaError error = Pa_IsFormatSupported(nullptr, &outputParams, sampleRate);
+        if (error == paNoError && !validSRs.contains(sampleRate))
+            validSRs.append(sampleRate);
     }
+
+    std::sort(validSRs.begin(), validSRs.end());
+    releaseHostSpecificParameters(outputParams, outputParams);
     return validSRs;
 }
 
