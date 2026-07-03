@@ -387,6 +387,10 @@ void MainWindow::selectNewCamera(int cameraIndex)
 void MainWindow::initializeCameraWidget()
 {
     auto cameras = QCameraInfo::availableCameras();
+    qInfo() << "Qt detected" << cameras.size() << "camera(s)";
+    for (const auto &cameraInfo : qAsConst(cameras)) {
+        qInfo() << "Camera:" << cameraInfo.description() << "device:" << cameraInfo.deviceName();
+    }
 
     if (!cameras.isEmpty()) {
 
@@ -415,6 +419,9 @@ void MainWindow::initializeCameraWidget()
             leftPanelLayout->addLayout(cameraLayout);
             leftPanelLayout->setAlignment(cameraLayout, Qt::AlignCenter);
         }
+    }
+    else {
+        qWarning() << "No cameras available to Qt, webcam control will not be shown";
     }
 }
 
@@ -3145,4 +3152,3 @@ void MainWindow::initializeNinjamPlugin()
 {
 }
 #endif
-

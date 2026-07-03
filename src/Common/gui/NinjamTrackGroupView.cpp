@@ -140,7 +140,10 @@ void NinjamTrackGroupView::addVideoInterval(const QByteArray &encodedVideoData)
     connect(videoDecoder, &FFMpegDemuxer::imagesDecoded, this, [=](QList<QImage> images, uint frameRate){
         if (!images.isEmpty()) {
             videoFrameRate = frameRate;
-            decodedImages << images;
+            DecodedVideoInterval interval;
+            interval.frames = images;
+            interval.totalFrames = static_cast<uint>(images.size());
+            decodedVideoIntervals << interval;
 
             videoDecoder->deleteLater();
         }
@@ -151,11 +154,21 @@ void NinjamTrackGroupView::addVideoInterval(const QByteArray &encodedVideoData)
 
 void NinjamTrackGroupView::startVideoStream()
 {
-    lastVideoRender = 0;
+    const quint64 now = QDateTime::currentMSecsSinceEpoch();
 
-    if (!decodedImages.isEmpty()) {
-        while (decodedImages.size() > 1)
-            decodedImages.removeFirst(); // keep just the last decoded interval
+    if (!decodedVideoIntervals.isEmpty()) {
+        if (decodedVideoIntervals.first().playbackStartTimeMs > 0)
+            decodedVideoIntervals.removeFirst(); // the previous interval playback window is finished
+
+        while (decodedVideoIntervals.size() > 1)
+            decodedVideoIntervals.removeFirst(); // keep just the last decoded interval
+
+        if (!decodedVideoIntervals.isEmpty()) {
+            auto &currentInterval = decodedVideoIntervals.first();
+            currentInterval.playbackStartTimeMs = now;
+            currentInterval.intervalDurationMs = getCurrentVideoIntervalDurationMs();
+            currentInterval.renderedFrames = 0;
+        }
     }
     else {
         intervalsWithoutReceiveVideo++;
@@ -467,22 +480,45 @@ void NinjamTrackGroupView::updateGuiElements()
     userNameLabel->updateMarquee();
 
     // video
-    if (!decodedImages.isEmpty()) {
-        quint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (!decodedVideoIntervals.isEmpty()) {
+        auto &currentInterval = decodedVideoIntervals.first();
+        if (!currentInterval.playbackStartTimeMs || currentInterval.totalFrames == 0)
+            return;
 
-        quint64 timePerFrame = 1000 / videoFrameRate;
-        quint64 diff = now - lastVideoRender;
-        if (diff >= timePerFrame) { // time to show a new video frame?
-            lastVideoRender = now - (diff % timePerFrame);
-            auto &currentImages = decodedImages.first();
-            if (!currentImages.isEmpty()) {
-                updateVideoFrame(currentImages.takeFirst());
-            }
-            else {
-                decodedImages.removeFirst(); // avoid show the last received frame forever
-            }
+        quint64 now = QDateTime::currentMSecsSinceEpoch();
+        quint64 intervalDurationMs = currentInterval.intervalDurationMs;
+        if (intervalDurationMs == 0)
+            intervalDurationMs = getCurrentVideoIntervalDurationMs();
+
+        quint64 elapsedMs = now - currentInterval.playbackStartTimeMs;
+        if (elapsedMs > intervalDurationMs)
+            elapsedMs = intervalDurationMs;
+
+        uint targetRenderedFrames = static_cast<uint>((elapsedMs * currentInterval.totalFrames) / intervalDurationMs);
+        if (targetRenderedFrames >= currentInterval.totalFrames)
+            targetRenderedFrames = currentInterval.totalFrames - 1;
+
+        QImage nextFrame;
+        while (currentInterval.renderedFrames <= targetRenderedFrames && !currentInterval.frames.isEmpty()) {
+            nextFrame = currentInterval.frames.takeFirst();
+            currentInterval.renderedFrames++;
         }
+
+        if (!nextFrame.isNull())
+            updateVideoFrame(nextFrame);
     }
+}
+
+quint64 NinjamTrackGroupView::getCurrentVideoIntervalDurationMs() const
+{
+    auto service = mainController ? mainController->getNinjamService() : nullptr;
+    if (service) {
+        auto intervalPeriod = service->getIntervalPeriod();
+        if (intervalPeriod > 0.0f)
+            return qMax<quint64>(1, static_cast<quint64>(intervalPeriod));
+    }
+
+    return qMax<quint64>(1, static_cast<quint64>(1000 / qMax(1u, videoFrameRate)));
 }
 
 NinjamTrackGroupView::~NinjamTrackGroupView()

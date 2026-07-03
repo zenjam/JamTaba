@@ -65,6 +65,14 @@ protected:
     void populateContextMenu(QMenu &contextMenu) override;
 
 private:
+    struct DecodedVideoInterval {
+        QList<QImage> frames;
+        uint totalFrames = 0;
+        quint64 playbackStartTimeMs = 0;
+        quint64 intervalDurationMs = 0;
+        uint renderedFrames = 0;
+    };
+
     controller::MainController *mainController;
     QLabel *countryLabel;
     QLabel *countryFlag;
@@ -75,8 +83,7 @@ private:
 
     VideoWidget *videoWidget;
     QByteArray encodedVideoData;
-    quint64 lastVideoRender;
-    QList<QList<QImage>> decodedImages;
+    QList<DecodedVideoInterval> decodedVideoIntervals;
     uint videoFrameRate;
     uint intervalsWithoutReceiveVideo;
 
@@ -89,6 +96,7 @@ private:
     Qt::Orientation getTracksOrientation() const;
 
     void resetMainLayoutStretch();
+    quint64 getCurrentVideoIntervalDurationMs() const;
 
     QString getUniqueName() const;
 

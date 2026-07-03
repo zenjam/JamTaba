@@ -156,6 +156,7 @@ win32{
 
 macx{
     #message("Mac x86_64 build")
+    QMAKE_INFO_PLIST = $$PWD/Info.plist
     LIBS_PATH = "static/mac64"
     LIBS += -lz
     LIBS += -L$$PWD/../../libs/$$LIBS_PATH -lportaudio -lminimp3 -lvorbisfile -lvorbisenc -lvorbis -logg -lx264 -lavcodec -lavutil -lavformat -lswscale -lswresample -liconv -lminiupnpc
