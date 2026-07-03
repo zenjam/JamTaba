@@ -456,10 +456,10 @@ login::Location MainController::getGeoLocation(const QString &ip)
     // try second level cache
     auto halfIp = getFirstIpPart(ip);
     if (!halfIp.isEmpty()) {
-        for (auto it = locationCache.keyValueBegin();
-             it != locationCache.keyValueEnd(); ++it) {
-            if (getFirstIpPart(it->first) == halfIp) {
-                return it->second;
+        for (auto it = locationCache.constBegin();
+             it != locationCache.constEnd(); ++it) {
+            if (getFirstIpPart(it.key()) == halfIp) {
+                return it.value();
             }
         }
     }

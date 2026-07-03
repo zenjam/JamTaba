@@ -26,7 +26,11 @@ namespace {
 QNetworkRequest makeTimedRequest(const QString &url, int timeoutMs)
 {
     QNetworkRequest request{QUrl(url)};
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setTransferTimeout(timeoutMs);
+#else
+    Q_UNUSED(timeoutMs)
+#endif
     return request;
 }
 

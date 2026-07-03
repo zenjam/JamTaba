@@ -176,8 +176,6 @@ macx{
 linux{
     equals(JAMTABA_BUILDER, "docker") {
         message("Linux docker build")
-
-        QMAKE_CXXFLAGS_RELEASE += -flto
     } else {
         message("Linux local build")
 

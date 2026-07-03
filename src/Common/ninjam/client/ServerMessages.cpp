@@ -90,11 +90,11 @@ bool AuthChallengeMessage::unserializeFrom(NinjamInputDataStream& stream)
 
 void AuthChallengeMessage::printDebug(QDebug &dbg) const
 {
-    dbg << "RECEIVED ServerAuthChallengeMessage{" << Qt::endl
-        << "\t challenge=" << getChallenge() << Qt::endl
-        << "\t protocolVersion=" << getProtocolVersion()<< Qt::endl
-        << "\t serverKeepAlivePeriod=" << getServerKeepAlivePeriod() << Qt::endl
-        <<"}" << Qt::endl;
+    dbg << "RECEIVED ServerAuthChallengeMessage{\n"
+        << "\t challenge=" << getChallenge() << "\n"
+        << "\t protocolVersion=" << getProtocolVersion()<< "\n"
+        << "\t serverKeepAlivePeriod=" << getServerKeepAlivePeriod() << "\n"
+        <<"}\n";
 }
 
 quint32 AuthChallengeMessage::getServerKeepAlivePeriod() const
@@ -154,7 +154,7 @@ void AuthReplyMessage::printDebug(QDebug &debug) const
           << " errorMessage='" << message
           << "' maxChannels=" << maxChannels
           << '}'
-          << Qt::endl;
+          << '\n';
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
@@ -197,7 +197,7 @@ void ConfigChangeNotifyMessage::printDebug(QDebug &dbg) const
     dbg << "RECEIVE ConfigChangeNotify{ bpm=" << bpm
         << ", bpi=" << bpi
         << '}'
-        << Qt::endl;
+        << '\n';
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
@@ -283,17 +283,17 @@ bool UserInfoChangeNotifyMessage::unserializeFrom(NinjamInputDataStream& stream)
 
 void UserInfoChangeNotifyMessage::printDebug(QDebug &dbg) const
 {
-    dbg << "UserInfoChangeNotify{" << Qt::endl;
+    dbg << "UserInfoChangeNotify{\n";
     for (auto iterator = userChannels.begin(); iterator != userChannels.end(); ++iterator) {
         const QString& userFullName = iterator.key();
          const UserChannel& channel = iterator.value();
-        dbg << " ->" << userFullName << Qt::endl;
+        dbg << " ->" << userFullName << '\n';
         dbg << "  ->>" << channel.getIndex() << " - " << channel.getName() <<
                " active:" << channel.isActive() <<
-               " flags:" << static_cast<quint8>(channel.getFlags()) << Qt::endl;
-        dbg << Qt::endl;
+               " flags:" << static_cast<quint8>(channel.getFlags()) << '\n';
+        dbg << '\n';
     }
-    dbg << "}" << Qt::endl;
+    dbg << "}\n";
 }
 
 quint32 UserInfoChangeNotifyMessage::getSerializeUserChannelPayload(const QString &userName, const UserChannel &channel)
@@ -447,7 +447,7 @@ void ServerToClientChatMessage::printDebug(QDebug &dbg) const
 {
     dbg << "RECEIVE ServerChatMessage{ command=" << command
         << " arguments=" << arguments << "}"
-        << Qt::endl;
+        << '\n';
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++
@@ -517,15 +517,15 @@ bool DownloadIntervalBegin::unserializeFrom(NinjamInputDataStream& stream)
 
 void DownloadIntervalBegin::printDebug(QDebug &dbg) const
 {
-    dbg << "DownloadIntervalBegin{ " << Qt::endl
-        << "\tfourCC='"<< fourCC[0] << fourCC[1] << fourCC[2] << fourCC[3] << Qt::endl
-        << "\tGUID={"<< QString::fromUtf8(GUID.data(), GUID.size()) << "} " << Qt::endl
-        << "\tisValidOggDownload="<< isAudio() << Qt::endl
-        << "\tdownloadShoudBeStopped="<< shouldBeStopped() << Qt::endl
-        << "\tdownloadIsComplete="<< isComplete() << Qt::endl
-        << "\testimatedSize=" << estimatedSize << Qt::endl
-        << "\tchannelIndex=" << channelIndex  << Qt::endl
-        << "}" << Qt::endl;
+    dbg << "DownloadIntervalBegin{ \n"
+        << "\tfourCC='"<< fourCC[0] << fourCC[1] << fourCC[2] << fourCC[3] << '\n'
+        << "\tGUID={"<< QString::fromUtf8(GUID.data(), GUID.size()) << "} \n"
+        << "\tisValidOggDownload="<< isAudio() << '\n'
+        << "\tdownloadShoudBeStopped="<< shouldBeStopped() << '\n'
+        << "\tdownloadIsComplete="<< isComplete() << '\n'
+        << "\testimatedSize=" << estimatedSize << '\n'
+        << "\tchannelIndex=" << channelIndex  << '\n'
+        << "}\n";
 }
 
 // -------------------------------------------------------------------
@@ -583,5 +583,5 @@ void DownloadIntervalWrite::printDebug(QDebug &dbg) const
         << "' GUID={" << QString::fromUtf8(GUID.data(), GUID.size())
         << "} downloadIsComplete=" << downloadIsComplete()
         << ", audioData=" << encodedData.size() << " bytes }"
-        << Qt::endl;
+        << '\n';
 }

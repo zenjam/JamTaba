@@ -5,15 +5,17 @@ on: workflow_dispatch
 jobs:
   build_all:
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: defter/jamtaba-linux:v5.15.7
 
     steps:
-      - name: Chekout
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build
         shell: bash
+        env:
+          JAMTABA_BUILDER: docker
         run: |
           cd ./PROJECTS
           qmake . CONFIG+=release

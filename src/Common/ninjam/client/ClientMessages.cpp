@@ -106,7 +106,7 @@ void ClientAuthUserMessage::printDebug(QDebug &dbg) const
         << " challenge:"
         << challenge
         << "}"
-        << Qt::endl;
+        << '\n';
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -189,7 +189,7 @@ void ClientSetChannel::printDebug(QDebug &dbg) const
     dbg << "SEND ClientSetChannel{ channels="
         << channels.size()
         << '}'
-        << Qt::endl;
+        << '\n';
 }
 
 void ClientSetChannel::addChannel(const QString &channelName, quint8 flags, bool active)
@@ -238,7 +238,7 @@ void ClientSetUserMask::printDebug(QDebug &dbg) const
         << " flag="
         << channelsMask
         << '}'
-        << Qt::endl;
+        << '\n';
 }
 
 //+++++++++++++++++++++++++++++
@@ -395,7 +395,7 @@ void ClientToServerChatMessage::printDebug(QDebug &dbg) const
         << " arg3=" << arguments.at(2)
         << " arg4=" << arguments.at(3)
         << '}'
-        << Qt::endl;
+        << '\n';
 }
 
 //+++++++++++++++++++++++++

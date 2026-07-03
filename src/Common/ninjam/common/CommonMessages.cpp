@@ -24,5 +24,5 @@ bool KeepAliveMessage::unserializeFrom(NinjamInputDataStream& stream)
 void KeepAliveMessage::printDebug(QDebug &dbg) const
 {
     dbg << "KeepAliveMessage{}"
-        << Qt::endl;
+        << '\n';
 }

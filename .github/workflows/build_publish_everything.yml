@@ -1,6 +1,6 @@
 name: Build and publish everything
 
-on:  
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -31,7 +31,7 @@ jobs:
     name: Build and upload
     needs: job_create_release
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: defter/jamtaba-${{ matrix.os }}:v5.15.7
     strategy:
       matrix:
@@ -39,13 +39,14 @@ jobs:
           - win32
           - win64
     steps:
-      - name: Chekout
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build everything
         shell: bash
         env:
           JAMTABA_VERSION: ${{ github.event.inputs.version }}
+          JAMTABA_BUILDER: docker
         run: |
           cd ./PROJECTS
           qmake . CONFIG+=release
@@ -78,20 +79,21 @@ jobs:
     name: Build and upload
     needs: job_create_release
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: defter/jamtaba-${{ matrix.os }}:v5.15.7
     strategy:
       matrix:
         os:
           - linux
     steps:
-      - name: Chekout
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build everything
         shell: bash
         env:
           JAMTABA_VERSION: ${{ github.event.inputs.version }}
+          JAMTABA_BUILDER: docker
         run: |
           cd ./PROJECTS
           qmake . CONFIG+=release

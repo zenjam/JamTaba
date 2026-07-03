@@ -1,6 +1,6 @@
 name: Build and Upload for macOS
 
-on:  
+on:
   workflow_dispatch:
   pull_request:
     branches:
@@ -9,15 +9,15 @@ on:
 jobs:
   build_upload_osx:
     name: Build and Upload for macOS
-    runs-on: macos-latest
+    runs-on: macos-12
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Qt
         run: |
-          brew install qt
-          echo "/usr/local/opt/qt/bin" >> $GITHUB_PATH
+          brew install qt@5
+          echo "$(brew --prefix qt@5)/bin" >> "$GITHUB_PATH"
 
       - name: Build everything
         shell: bash
@@ -30,11 +30,10 @@ jobs:
 
       - name: Archive build artifacts
         run: |
-          zip -r jamtaba-macos-${{ env.JAMTABA_VERSION }}.zip ./PROJECTS/build
+          zip -r jamtaba-macos-${{ env.JAMTABA_VERSION }}.zip ./PROJECTS/Standalone
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jamtaba-macos-${{ env.JAMTABA_VERSION }}
           path: jamtaba-macos-${{ env.JAMTABA_VERSION }}.zip
-          

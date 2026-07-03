@@ -42,20 +42,20 @@ QString PortAudioDriver::getInputChannelName(const unsigned int index) const
     return "error";
 }
 
-void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters &inputParameters)
+void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters &inputParameters) const
 {
     Q_UNUSED(inputParameters)
 
 }
 
-void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters &outputParameters)
+void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters &outputParameters) const
 {
     Q_UNUSED(outputParameters)
 
 }
 
 void PortAudioDriver::releaseHostSpecificParameters(const PaStreamParameters &inputParameters,
-                                                    const PaStreamParameters &outputParameters)
+                                                    const PaStreamParameters &outputParameters) const
 {
     Q_UNUSED(inputParameters)
     Q_UNUSED(outputParameters)
