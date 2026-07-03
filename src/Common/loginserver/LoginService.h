@@ -177,6 +177,7 @@ private:
     static const QString VERSION_SERVER_URL;
 
     static const int REFRESH_PERIOD = 60000;
+    static const int REQUEST_TIMEOUT_MS = 10000;
     QTimer *refreshTimer;
 
     void handleJson(const QString &json, const QUrl &requestUrl);

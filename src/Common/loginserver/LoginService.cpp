@@ -21,6 +21,17 @@ using login::RoomInfo;
 const QString LoginService::LOGIN_SERVER_URL = "http://ninbot.com/app/servers.php";
 const QString LoginService::VERSION_SERVER_URL = "http://jamtaba2.appspot.com/version";
 
+namespace {
+
+QNetworkRequest makeTimedRequest(const QString &url, int timeoutMs)
+{
+    QNetworkRequest request{QUrl(url)};
+    request.setTransferTimeout(timeoutMs);
+    return request;
+}
+
+}
+
 UserInfo::UserInfo(const QString &name, const QString &ip, const QString &countryName, const QString &countryCode, float latitude, float longitude) :
     name(name),
     ip(ip)
@@ -90,7 +101,7 @@ LoginService::LoginService(QObject *parent) :
     refreshTimer(new QTimer(this))
 {
     connect(refreshTimer, &QTimer::timeout, this, [=](){
-        httpClient.get(QNetworkRequest(QUrl(LOGIN_SERVER_URL)));
+        httpClient.get(makeTimedRequest(LOGIN_SERVER_URL, REQUEST_TIMEOUT_MS));
     });
 
     connect(&httpClient, &QNetworkAccessManager::finished, this, [=](QNetworkReply *reply){
@@ -110,10 +121,10 @@ LoginService::LoginService(QObject *parent) :
     refreshTimer->start(REFRESH_PERIOD);
 
     // the first public servers list query
-    httpClient.get(QNetworkRequest(QUrl(LOGIN_SERVER_URL)));
+    httpClient.get(makeTimedRequest(LOGIN_SERVER_URL, REQUEST_TIMEOUT_MS));
 
     // query the current version to jamtaba server using HTTP (is querying github using HTTPS)
-    httpClient.get(QNetworkRequest(QUrl(VERSION_SERVER_URL)));
+    httpClient.get(makeTimedRequest(VERSION_SERVER_URL, REQUEST_TIMEOUT_MS));
 
 }
 
