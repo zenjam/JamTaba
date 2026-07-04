@@ -128,14 +128,13 @@ win32{
     }
 
     CONFIG(release, debug|release) {
-        LIBS += -lportaudio -lvorbisfile -lvorbis -logg -lx264 -lavcodec -lavutil -lavformat -lswscale -lswresample -lminiupnpc
+        LIBS += -lportaudio -lvorbisfile -lvorbis -logg -lx264 -lavformat -lavcodec -lswscale -lavutil -lswresample -lminiupnpc
     } else:CONFIG(debug, debug|release) {
-        LIBS += -lportaudiod -lvorbisfiled -lvorbisd -loggd -lx264 -lavcodecd -lavutild -lavformatd -lswscaled -lswresample -lminiupnpcd
+        LIBS += -lportaudiod -lvorbisfiled -lvorbisd -loggd -lx264 -lavformatd -lavcodecd -lswscaled -lavutild -lswresample -lminiupnpcd
     }
 
     CONFIG(release, debug|release) {
         equals(JAMTABA_BUILDER, "docker") {
-            QMAKE_CXXFLAGS_RELEASE += -flto
         } else {
             #ltcg - http://blogs.msdn.com/b/vcblog/archive/2009/02/24/quick-tips-on-using-whole-program-optimization.aspx
             QMAKE_CXXFLAGS_RELEASE +=  -GL -Gy -Gw

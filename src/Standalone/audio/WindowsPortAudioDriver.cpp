@@ -7,7 +7,7 @@ namespace audio {
 
 
 
-void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters& inputParams){
+void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters& inputParams) const{
 
     //+++++++++++++++ ASIO SPECIFIC CODE FOR INPUT ++++++++++++++++++++++++++++++++
     qCDebug(jtAudio) << "using __WIN32 scpecific stream infos for inputs";
@@ -24,7 +24,7 @@ void PortAudioDriver::configureHostSpecificInputParameters(PaStreamParameters& i
     inputParams.hostApiSpecificStreamInfo = asioInputInfo;
 }
 
-void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters& outputParams){
+void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters& outputParams) const{
     //+++++++++++++++ ASIO SPECIFIC CODE FOR OUTPUT ++++++++++++++++++++++++++++++++
     qCDebug(jtAudio) << "using __WIN32 scpecific stream infos for outputs";
     PaAsioStreamInfo* asioOutputInfo = new PaAsioStreamInfo;
@@ -39,7 +39,7 @@ void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters& 
     outputParams.hostApiSpecificStreamInfo = asioOutputInfo;
 }
 
-void PortAudioDriver::releaseHostSpecificParameters(const PaStreamParameters &inputParameters, const PaStreamParameters &outputParameters){
+void PortAudioDriver::releaseHostSpecificParameters(const PaStreamParameters &inputParameters, const PaStreamParameters &outputParameters) const{
     if(inputParameters.hostApiSpecificStreamInfo){
         PaAsioStreamInfo* asioInputStreamInfo = (PaAsioStreamInfo*)inputParameters.hostApiSpecificStreamInfo;
         delete[] asioInputStreamInfo->channelSelectors;

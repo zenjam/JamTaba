@@ -102,7 +102,7 @@ win32 {
     #CONFIG(debug, debug|release):   LIBS += -L$(QTDIR)\plugins\mediaservice\ -lqtfreetyped
     #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    LIBS += -lvorbisfile -lvorbis -logg -lx264 -lavcodec -lavutil -lavformat -lswscale -lswresample -lminiupnpc
+    LIBS += -lvorbisfile -lvorbis -logg -lx264 -lavformat -lavcodec -lswscale -lavutil -lswresample -lminiupnpc
 
     LIBS += -lwinmm -lole32 -lws2_32 -ladvapi32 -luser32 #-lPsapi
 
@@ -123,7 +123,6 @@ win32 {
 
     CONFIG(release, debug|release) {
         equals(JAMTABA_BUILDER, "docker") {
-            QMAKE_CXXFLAGS_RELEASE += -flto
         } else {
             #ltcg - http://blogs.msdn.com/b/vcblog/archive/2009/02/24/quick-tips-on-using-whole-program-optimization.aspx
             QMAKE_CXXFLAGS_RELEASE +=  -GL
