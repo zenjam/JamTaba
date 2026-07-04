@@ -11,6 +11,11 @@
 #include <stdexcept>
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
+
+#ifdef Q_OS_WIN
+    #include <windows.h>
+#endif
 
 /*
  * This file contain the platform independent PortAudio code. The platform specific
@@ -20,23 +25,81 @@
 namespace audio
 {
 
+#ifdef Q_OS_WIN
+namespace {
+
+void appendBootstrapLog(const char *stage)
+{
+    char tempPath[MAX_PATH] = {0};
+    DWORD tempPathLength = GetTempPathA(MAX_PATH, tempPath);
+    if (tempPathLength == 0 || tempPathLength >= MAX_PATH)
+        return;
+
+    char logPath[MAX_PATH] = {0};
+    int written = snprintf(logPath, MAX_PATH, "%sjamtaba-bootstrap.log", tempPath);
+    if (written <= 0 || written >= MAX_PATH)
+        return;
+
+    HANDLE logFile = CreateFileA(logPath, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                 nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (logFile == INVALID_HANDLE_VALUE)
+        return;
+
+    SYSTEMTIME systemTime;
+    GetLocalTime(&systemTime);
+
+    char buffer[256] = {0};
+    written = snprintf(buffer, sizeof(buffer),
+                       "%04u-%02u-%02u %02u:%02u:%02u.%03u pid=%lu %s\r\n",
+                       systemTime.wYear, systemTime.wMonth, systemTime.wDay,
+                       systemTime.wHour, systemTime.wMinute, systemTime.wSecond,
+                       systemTime.wMilliseconds, GetCurrentProcessId(), stage);
+    if (written > 0) {
+        DWORD bytesWritten = 0;
+        WriteFile(logFile, buffer, (DWORD)written, &bytesWritten, nullptr);
+    }
+
+    CloseHandle(logFile);
+}
+
+}
+#endif
+
 PortAudioDriver::PortAudioDriver(controller::MainController* mainController, QString audioInputDevice, QString audioOutputDevice, int firstInputIndex, int lastInputIndex, int firstOutputIndex, int lastOutputIndex, int sampleRate, int bufferSize ) :
     AudioDriver(mainController),
     useSystemDefaultDevices(false),
     useNonInterleavedPortAudio(true)
 {
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: entered");
+#endif
     qCDebug(jtAudio) << QString("initializing portaudio (%1)...").arg(Pa_GetVersionText());
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: before Pa_Initialize");
+#endif
     auto error = Pa_Initialize();
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: after Pa_Initialize");
+#endif
     if (error != paNoError) {
         qCritical() << "ERROR initializing portaudio:" << Pa_GetErrorText(error);
         return;
     }
 
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: before getDeviceNames");
+#endif
     auto devicesNames = getDeviceNames();
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: after getDeviceNames");
+#endif
 
     qCDebug(jtAudio) << "Device names: " << devicesNames;
 
     auto devicesFound = devicesNames.contains(audioInputDevice) && devicesNames.contains(audioOutputDevice);
+#ifdef Q_OS_WIN
+    appendBootstrapLog(devicesFound ? "PortAudioDriver ctor: devicesFound" : "PortAudioDriver ctor: devicesMissing");
+#endif
 
     if (devicesFound) {
         audioInputDeviceIndex = devicesNames.indexOf(audioInputDevice);
@@ -48,7 +111,13 @@ PortAudioDriver::PortAudioDriver(controller::MainController* mainController, QSt
         audioInputDeviceIndex = audioOutputDeviceIndex = paNoDevice; // forcing system default device
     }
 
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: before initPortAudio");
+#endif
     auto portAudioInitialized = initPortAudio(sampleRate, bufferSize);
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: after initPortAudio");
+#endif
 
     if (portAudioInitialized) {
         if (!devicesFound) {
@@ -73,6 +142,9 @@ PortAudioDriver::PortAudioDriver(controller::MainController* mainController, QSt
         audioInputDeviceIndex = audioOutputDeviceIndex = paNoDevice;
     }
 
+#ifdef Q_OS_WIN
+    appendBootstrapLog("PortAudioDriver ctor: exit");
+#endif
 }
 
 QStringList PortAudioDriver::getDeviceNames() const

@@ -35,6 +35,46 @@
 
 using ninjam::client::ServerInfo;
 
+#ifdef Q_OS_WIN
+namespace {
+
+void appendBootstrapLog(const char *stage)
+{
+    char tempPath[MAX_PATH] = {0};
+    DWORD tempPathLength = GetTempPathA(MAX_PATH, tempPath);
+    if (tempPathLength == 0 || tempPathLength >= MAX_PATH)
+        return;
+
+    char logPath[MAX_PATH] = {0};
+    int written = snprintf(logPath, MAX_PATH, "%sjamtaba-bootstrap.log", tempPath);
+    if (written <= 0 || written >= MAX_PATH)
+        return;
+
+    HANDLE logFile = CreateFileA(logPath, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                 nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (logFile == INVALID_HANDLE_VALUE)
+        return;
+
+    SYSTEMTIME systemTime;
+    GetLocalTime(&systemTime);
+
+    char buffer[256] = {0};
+    written = snprintf(buffer, sizeof(buffer),
+                       "%04u-%02u-%02u %02u:%02u:%02u.%03u pid=%lu %s\r\n",
+                       systemTime.wYear, systemTime.wMonth, systemTime.wDay,
+                       systemTime.wHour, systemTime.wMinute, systemTime.wSecond,
+                       systemTime.wMilliseconds, GetCurrentProcessId(), stage);
+    if (written > 0) {
+        DWORD bytesWritten = 0;
+        WriteFile(logFile, buffer, (DWORD)written, &bytesWritten, nullptr);
+    }
+
+    CloseHandle(logFile);
+}
+
+}
+#endif
+
 QString MainControllerStandalone::getJamtabaFlavor() const
 {
     return "Standalone";
@@ -438,16 +478,28 @@ void MainControllerStandalone::setVstPluginWindowSize(QString pluginName, int ne
 
 void MainControllerStandalone::start()
 {
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start entered");
+#endif
     // creating audio and midi driver before call start() in base class (MainController::start())
 
     if (!midiDriver)
     {
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start before createMidiDriver");
+#endif
         qCInfo(jtCore) << "Creating midi driver...";
         midiDriver.reset(createMidiDriver());
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start after createMidiDriver");
+#endif
     }
 
     if (!audioDriver)
     {
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start before createAudioDriver");
+#endif
         qCInfo(jtCore) << "Creating audio driver...";
         audio::AudioDriver *driver = nullptr;
         try
@@ -464,6 +516,9 @@ void MainControllerStandalone::start()
             driver = new audio::NullAudioDriver();
 
         audioDriver.reset(driver);
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start after createAudioDriver");
+#endif
 
         QObject::connect(audioDriver.data(), SIGNAL(sampleRateChanged(int)), this,
                          SLOT(setSampleRate(int)));
@@ -471,23 +526,52 @@ void MainControllerStandalone::start()
                          SLOT(on_audioDriverStopped()));
         QObject::connect(audioDriver.data(), SIGNAL(started()), this,
                          SLOT(on_audioDriverStarted()));
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start after audioDriver connects");
+#endif
     }
 
     // calling the base class
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start before MainController::start");
+#endif
     MainController::start();
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start after MainController::start");
+#endif
 
     if (audioDriver)
     {
         if (!audioDriver->canBeStarted())
             useNullAudioDriver();
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start before audioDriver->start");
+#endif
         audioDriver->start();
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start after audioDriver->start");
+#endif
     }
 
     if (midiDriver)
+    {
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start before midiDriver->start");
+#endif
         midiDriver->start(settings.getMidiInputDevicesStatus(), settings.getSyncOutputDevicesStatus());
+#ifdef Q_OS_WIN
+        appendBootstrapLog("MainControllerStandalone::start after midiDriver->start");
+#endif
+    }
 
     qCInfo(jtCore) << "Creating plugin finder...";
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start before VSTPluginFinder");
+#endif
     vstPluginFinder.reset(new audio::VSTPluginFinder());
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start after VSTPluginFinder");
+#endif
 
 #ifdef Q_OS_MAC
 
@@ -509,6 +593,9 @@ void MainControllerStandalone::start()
             host->setBlockSize(audioDriver->getBufferSize());
         }
     }
+#ifdef Q_OS_WIN
+    appendBootstrapLog("MainControllerStandalone::start exit");
+#endif
 }
 
 void MainControllerStandalone::cancelPluginFinders()

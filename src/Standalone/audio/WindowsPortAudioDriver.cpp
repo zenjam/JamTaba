@@ -40,13 +40,16 @@ void PortAudioDriver::configureHostSpecificOutputParameters(PaStreamParameters& 
 }
 
 void PortAudioDriver::releaseHostSpecificParameters(const PaStreamParameters &inputParameters, const PaStreamParameters &outputParameters) const{
-    if(inputParameters.hostApiSpecificStreamInfo){
-        PaAsioStreamInfo* asioInputStreamInfo = (PaAsioStreamInfo*)inputParameters.hostApiSpecificStreamInfo;
+    auto inputInfo = static_cast<PaAsioStreamInfo *>(inputParameters.hostApiSpecificStreamInfo);
+    auto outputInfo = static_cast<PaAsioStreamInfo *>(outputParameters.hostApiSpecificStreamInfo);
+
+    if(inputInfo){
+        PaAsioStreamInfo* asioInputStreamInfo = inputInfo;
         delete[] asioInputStreamInfo->channelSelectors;
         delete asioInputStreamInfo;
     }
-    if(outputParameters.hostApiSpecificStreamInfo){
-        PaAsioStreamInfo* asioOutputStreamInfo = (PaAsioStreamInfo*)outputParameters.hostApiSpecificStreamInfo;
+    if(outputInfo && outputInfo != inputInfo){
+        PaAsioStreamInfo* asioOutputStreamInfo = outputInfo;
         delete[] asioOutputStreamInfo->channelSelectors;
         delete asioOutputStreamInfo;
     }
